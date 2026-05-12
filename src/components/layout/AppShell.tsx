@@ -49,10 +49,8 @@ function Breadcrumbs({ path }: { path: string }) {
 export function AppShell({
   children,
   user,
-  demoMode = false,
 }: {
   children: React.ReactNode;
-  demoMode?: boolean;
   user: {
     name: string;
     email: string;
@@ -136,15 +134,7 @@ export function AppShell({
             </button>
           </div>
         </header>
-        <main className="flex-1 p-6 overflow-auto">
-          {demoMode && (
-            <div className="mb-4 rounded-lg border border-amber-500/40 bg-amber-500/10 px-4 py-2 text-sm text-amber-100">
-              Modo demonstração: sem PostgreSQL. Dashboard com números fictícios; outras áreas podem mostrar erro até
-              você configurar o banco e desativar <code className="text-amber-50/90">DEMO_MODE</code>.
-            </div>
-          )}
-          {children}
-        </main>
+        <main className="flex-1 p-6 overflow-auto">{children}</main>
       </div>
     </div>
   );

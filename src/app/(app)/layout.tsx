@@ -1,7 +1,6 @@
 import { auth } from "@/auth";
 import { redirect } from "next/navigation";
 import { AppShell } from "@/components/layout/AppShell";
-import { isDemoMode } from "@/lib/demo-mode";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const session = await auth();
@@ -9,7 +8,6 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
   return (
     <AppShell
-      demoMode={isDemoMode()}
       user={{
         name: session.user.name ?? "",
         email: session.user.email ?? "",
