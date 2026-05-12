@@ -11,6 +11,11 @@ export default function LoginPage() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [dbHint, setDbHint] = useState<string | null>(null);
+  /** Último /api/health — evita confundir “0 users” com “base desligada”. */
+  const [healthOk, setHealthOk] = useState<{
+    schemaReady: boolean;
+    userCount: number;
+  } | null>(null);
 
   useEffect(() => {
     fetch("/api/health")
@@ -24,6 +29,10 @@ export default function LoginPage() {
           userCount?: number;
           demoMode?: boolean;
         }) => {
+          setHealthOk({
+            schemaReady: data.schemaReady !== false && data.database === true,
+            userCount: typeof data.userCount === "number" ? data.userCount : 0,
+          });
           if (data.demoMode) {
             setDbHint(
               "Modo demonstração (DEMO_MODE): você pode entrar sem PostgreSQL. Os números do dashboard são exemplos; o CRM aparece vazio até conectar o banco e rodar o seed."
@@ -65,9 +74,17 @@ export default function LoginPage() {
     });
     setLoading(false);
     if (res?.error) {
-      setError(
-        "Não foi possível entrar. Confira e-mail e senha (veja a caixa abaixo). Se o banco não tiver usuários, rode o seed após corrigir o PostgreSQL."
-      );
+      if (res.error === "CredentialsSignin" && healthOk?.schemaReady && healthOk.userCount === 0) {
+        setError(
+          "A base tem tabelas mas ainda não tem utilizadores. No seu PC, com DATABASE_URL direto ao mesmo Supabase (porta 5432, host db…), execute: npm run db:seed — depois volte a tentar aqui."
+        );
+      } else if (res.error === "CredentialsSignin") {
+        setError(
+          "E-mail ou palavra-passe incorretos — ou o utilizador ainda não existe nesta base. Confirme master@vendacomciencia.com e a senha do seed; se nunca correu o seed neste projeto Supabase, rode npm run db:seed com a URI direta."
+        );
+      } else {
+        setError(`Não foi possível entrar (${res.error}). Tente de novo ou verifique as variáveis na Vercel.`);
+      }
       return;
     }
     router.push("/dashboard");
