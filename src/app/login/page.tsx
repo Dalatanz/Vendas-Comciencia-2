@@ -15,25 +15,42 @@ export default function LoginPage() {
   useEffect(() => {
     fetch("/api/health")
       .then((r) => r.json())
-      .then((data: { ok?: boolean; database?: boolean; userCount?: number; demoMode?: boolean }) => {
-        if (data.demoMode) {
-          setDbHint(
-            "Modo demonstração (DEMO_MODE): você pode entrar sem PostgreSQL. Os números do dashboard são exemplos; o CRM aparece vazio até conectar o banco e rodar o seed."
-          );
-          return;
+      .then(
+        (data: {
+          ok?: boolean;
+          database?: boolean;
+          schemaReady?: boolean;
+          schemaMissing?: boolean;
+          userCount?: number;
+          demoMode?: boolean;
+        }) => {
+          if (data.demoMode) {
+            setDbHint(
+              "Modo demonstração (DEMO_MODE): você pode entrar sem PostgreSQL. Os números do dashboard são exemplos; o CRM aparece vazio até conectar o banco e rodar o seed."
+            );
+            return;
+          }
+          if (!data.database) {
+            setDbHint(
+              "O app não consegue conectar ao PostgreSQL. Confira DATABASE_URL na Vercel (ou .env local): host, porta, utilizador e palavra-passe."
+            );
+            return;
+          }
+          if (data.database && data.schemaReady === false) {
+            setDbHint(
+              data.schemaMissing
+                ? "O Postgres responde, mas o schema Prisma ainda não foi aplicado (falta a tabela User, etc.). No seu PC, com DATABASE_URL apontando para este mesmo banco (conexão direta Supabase, porta 5432), execute: npx prisma migrate deploy e depois npm run db:seed"
+                : "O banco responde, mas houve erro ao ler as tabelas. Verifique se correu npx prisma migrate deploy (ou db push) contra este banco."
+            );
+            return;
+          }
+          if ((data.userCount ?? 0) === 0) {
+            setDbHint(
+              "Tabelas OK, mas não há utilizadores. Rode: npm run db:seed (com o mesmo DATABASE_URL)."
+            );
+          }
         }
-        if (!data.database) {
-          setDbHint(
-            "O app não consegue conectar ao PostgreSQL. Ajuste DATABASE_URL no arquivo .env (usuário e senha corretos do seu Postgres) e rode: npx prisma db push && npm run db:seed"
-          );
-          return;
-        }
-        if ((data.userCount ?? 0) === 0) {
-          setDbHint(
-            "Banco conectado, mas não há usuários. Rode na pasta do projeto: npm run db:seed"
-          );
-        }
-      })
+      )
       .catch(() => setDbHint(null));
   }, []);
 
