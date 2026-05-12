@@ -1,36 +1,183 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# VENDA COMCIÊNCIA
 
-## Getting Started
+Sistema web completo para inteligência comercial: CRM com funil **cold call**, permissões por perfil, multiempresa, ecossistemas **Scale** e **Simplifica**, autenticação, PostgreSQL (Prisma) e interface em tema escuro com verde neon. Para ver o layout **sem instalar PostgreSQL**, use o modo demonstração (`DEMO_MODE`).
 
-First, run the development server:
+## Stack
+
+- Next.js 14 (App Router) + TypeScript  
+- Tailwind CSS  
+- Prisma 5 + PostgreSQL  
+- NextAuth.js v5 (Credentials + JWT)  
+- React Hook Form + Zod  
+- Recharts  
+- Vitest  
+
+## Pré-requisitos
+
+- Node.js 20+  
+- PostgreSQL (ou Docker) **quando for usar dados reais** — opcional se só ativar `DEMO_MODE` para navegar na interface  
+
+## Instalação
+
+```bash
+npm install
+```
+
+## Variáveis de ambiente
+
+Copie `.env.example` para `.env` e ajuste:
+
+| Variável | Descrição |
+|----------|-----------|
+| `DEMO_MODE` | Defina `1` ou `true` para login e dashboard **sem** PostgreSQL (dados fictícios; não use em produção). |
+| `DATABASE_URL` | URL do PostgreSQL quando for usar o sistema de verdade (local, Supabase, etc.). |
+| `AUTH_SECRET` | Segredo do NextAuth (string longa aleatória) |
+| `NEXTAUTH_URL` | URL base da aplicação em dev: `http://localhost:3000` |
+
+## Banco de dados
+
+Com **`DEMO_MODE=1`** você não precisa rodar migrations nem seed para ver o layout (login com `master@vendacomciencia.com` / `maisvendas!@2026`).
+
+Para **dados reais**, desative o modo demo e configure o Postgres:
+
+### Subir PostgreSQL com Docker (opcional)
+
+```bash
+docker compose up -d
+```
+
+### Migrations
+
+```bash
+npm run db:migrate
+```
+
+Em desenvolvimento, alternativa rápida sem histórico de migration:
+
+```bash
+npm run db:push
+```
+
+### Seeds (dados iniciais + usuários de teste)
+
+```bash
+npm run db:seed
+```
+
+## Executar o sistema
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Acesse `http://localhost:3000`. Você será redirecionado para o login.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### Usuários de teste (seed)
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+| E-mail | Perfil |
+|--------|--------|
+| `master@vendacomciencia.com` | Master |
+| `diretor@vendacomciencia.com` | Diretor |
+| `gestor@vendacomciencia.com` | Gestor |
+| `sdr@vendacomciencia.com` | SDR |
+| `closer@vendacomciencia.com` | Closer |
 
-## Learn More
+**Senha padrão (todos):** `maisvendas!@2026`
 
-To learn more about Next.js, take a look at the following resources:
+Após o login, use o menu **Ecossistema** para alternar entre **Scale** e **Simplifica** (a sessão é atualizada e os dados filtrados por ecossistema).
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Scripts úteis
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+| Comando | Descrição |
+|---------|-----------|
+| `npm run dev` | Servidor de desenvolvimento |
+| `npm run build` | Build de produção |
+| `npm run start` | Servidor após build |
+| `npm run lint` | ESLint |
+| `npm run test` | Testes (Vitest) |
+| `npm run db:generate` | Gera o Prisma Client |
+| `npm run db:migrate` | Aplica migrations (`migrate deploy`) |
+| `npm run db:push` | Sincroniza schema sem migration file |
+| `npm run db:seed` | Executa o seed |
 
-## Deploy on Vercel
+## Estrutura principal
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+- `prisma/schema.prisma` — modelo de dados completo (PostgreSQL)  
+- `prisma/migrations/` — SQL inicial PostgreSQL  
+- `prisma/seed.ts` — perfis, permissões, ecossistemas, funil cold call, usuários, empresa demo, lead, chamado, tarefa estratégica  
+- `src/auth.ts` — NextAuth (login por e-mail/senha)  
+- `src/middleware.ts` — proteção de rotas e exigência de ecossistema  
+- `src/actions/` — server actions (CRM, chamados, workspace, admin, etc.)  
+- `src/lib/` — Prisma, RBAC, máscaras, regras de etapa de lead, score de avaliação  
+- `src/app/(app)/` — páginas autenticadas (dashboard, CRM, tickets, …)  
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Testes
+
+```bash
+npm run test
+```
+
+Inclui testes básicos de máscara/CNPJ e da regra de exibição do score (70/30) por perfil.
+
+## Caminho recomendado: local → Supabase → Vercel
+
+### Fase 1 — Só ver a interface (sem PostgreSQL)
+
+1. Copie `.env.example` → `.env`.  
+2. Defina `DEMO_MODE=1`, `AUTH_SECRET`, `NEXTAUTH_URL` (`http://localhost:3000`). `DATABASE_URL` pode ficar como placeholder enquanto o demo estiver ativo.  
+3. Rode:
+
+   ```bash
+   npm run dev
+   ```
+
+4. Acesse o login: **`master@vendacomciencia.com`** / **`maisvendas!@2026`** — a sessão é fictícia (não lê usuários do banco).  
+5. O dashboard mostra **números de exemplo**; o CRM abre com colunas vazias; outras telas podem falhar até existir banco. **Não use `DEMO_MODE` em produção.**
+
+Quando for usar dados reais, desative `DEMO_MODE`, aponte `DATABASE_URL` para um Postgres válido, rode `db:push` ou `db:migrate` e `db:seed`, e siga para a fase 2.
+
+### Fase 2 — Banco no Supabase
+
+1. Crie um projeto em [Supabase](https://supabase.com).  
+2. Em **Project Settings → Database**, copie a connection string.  
+   - Para **migrations e seed a partir do seu computador**, use a conexão **direta** (host `db.<ref>.supabase.co`, porta **5432**), com a senha do banco.  
+   - Para o **app em produção (Vercel)**, o Supabase recomenda o **pooler** (Transaction mode, porta **6543**) com `?pgbouncer=true&connection_limit=1` na URL, para não estourar conexões em serverless.  
+3. No `.env` local, aponte `DATABASE_URL` para o Postgres do Supabase e rode:
+
+   ```bash
+   npx prisma migrate deploy
+   npm run db:seed
+   ```
+
+   (Se ainda não tiver migrations aplicadas, `npx prisma db push` também funciona uma vez; em time, prefira `migrate deploy`.)
+
+4. Confirme login e dados no ambiente local contra o Supabase antes do deploy.
+
+### Fase 3 — Deploy na Vercel
+
+1. Conecte o repositório Git à [Vercel](https://vercel.com).  
+2. Em **Settings → Environment Variables**, configure pelo menos:
+
+   | Variável | Valor |
+   |----------|--------|
+   | `DATABASE_URL` | URI do Supabase (**pooler** 6543 + `pgbouncer=true` para produção) |
+   | `AUTH_SECRET` | Mesmo tipo de segredo longo do `.env` local (pode ser outro valor, só precisa ser estável) |
+   | `NEXTAUTH_URL` | URL pública do site, ex.: `https://seu-app.vercel.app` (sem `/` no final) |
+
+3. **Build**: a Vercel roda `npm run build` (o `postinstall` já roda `prisma generate`).  
+4. **Migrations**: não dependa só do build para criar tabelas — rode `npx prisma migrate deploy` (ou `db push`) **contra o Supabase** a partir da sua máquina ou de um job de CI **antes** ou logo após o primeiro deploy, com `DATABASE_URL` apontando para o mesmo banco.  
+5. **Seed em produção**: rode `npm run db:seed` **uma vez** contra o banco de produção se quiser os usuários de demo (em produção real, prefira criar só um admin e remover o seed depois).
+
+O projeto já usa `trustHost: true` no NextAuth, adequado ao domínio da Vercel.
+
+---
+
+## Produção (genérico)
+
+- `AUTH_SECRET` forte e `NEXTAUTH_URL` igual à URL pública que o usuário acessa.  
+- `npm run build` + deploy na plataforma escolhida.  
+- Banco: migrations aplicadas no Postgres (Supabase ou outro).
+
+---
+
+**VENDA COMCIÊNCIA** — ciência e tecnologia aplicadas à performance comercial.

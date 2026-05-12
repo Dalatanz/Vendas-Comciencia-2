@@ -1,0 +1,690 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum RoleName {
+  SDR
+  CLOSER
+  GESTOR
+  DIRETOR
+  MASTER
+}
+
+enum RegimeTributario {
+  SIMPLES_NACIONAL
+  LUCRO_PRESUMIDO
+  LUCRO_REAL
+}
+
+enum LeadStatus {
+  NOVO
+  EM_CONTATO
+  QUALIFICADO
+  REUNIAO
+  PROPOSTA
+  GANHO
+  PERDIDO
+  STANDBY
+}
+
+enum ActivityType {
+  LIGACAO
+  WHATSAPP
+  EMAIL
+  REUNIAO
+  NOTA
+  OUTRO
+}
+
+enum TicketArea {
+  TI
+  INTELIGENCIA_NEGOCIOS
+}
+
+enum TicketCategory {
+  CRM
+  VOIP
+  SISTEMA
+}
+
+enum TicketSubcategory {
+  DUVIDA
+  ERRO_SISTEMA
+  FALHA_CONEXAO
+}
+
+enum TicketStatus {
+  ABERTO
+  EM_ATENDIMENTO
+  AGUARDANDO
+  FECHADO
+  REABERTO
+}
+
+enum StrategicColumn {
+  A_FAZER
+  EM_ANDAMENTO
+  AGUARDANDO
+  REVISAO
+  CONCLUIDO
+}
+
+enum StrategicPriority {
+  BAIXA
+  MEDIA
+  ALTA
+  URGENTE
+}
+
+enum NotificationType {
+  INFO
+  SLA
+  TICKET
+  TAREFA
+  AVALIACAO
+  SISTEMA
+}
+
+enum EvaluationPostponementStatus {
+  PENDENTE
+  APROVADO
+  REPROVADO
+}
+
+model User {
+  id                   String    @id @default(cuid())
+  email                String    @unique
+  passwordHash         String
+  name                 String
+  image                String?
+  selectedEcosystemId  String?
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+
+  memberships          UserEcosystemMembership[]
+  selectedEcosystem    Ecosystem? @relation("UserSelectedEcosystem", fields: [selectedEcosystemId], references: [id])
+
+  leadsAsSdr           Lead[]    @relation("LeadSdr")
+  leadsAsCloser        Lead[]    @relation("LeadCloser")
+  leadActivities       LeadActivity[]
+  leadTasksAssigned    LeadTask[] @relation("LeadTaskAssignee")
+  leadTasksCreated     LeadTask[] @relation("LeadTaskCreator")
+  meetings             Meeting[]
+  proposals            Proposal[]
+  contracts            Contract[]
+
+  oneOnOnesAsSeller    OneOnOne[] @relation("OneOnOneSeller")
+  oneOnOnesAsLeader    OneOnOne[] @relation("OneOnOneLeader")
+
+  evaluationsAsSubject Evaluation[] @relation("EvaluationSubject")
+  evaluationsAsLeader  Evaluation[] @relation("EvaluationLeader")
+
+  climateResponses     ClimateSurveyResponse[]
+
+  ticketsOpened        Ticket[] @relation("TicketRequester")
+  ticketMessages       TicketMessage[]
+
+  workspaceComments    WorkspaceComment[]
+  workspaceFilesUploaded WorkspaceFile[] @relation("WorkspaceFileUploader")
+
+  strategicTasksAssigned StrategicTask[] @relation("StrategicAssignee")
+  strategicComments      StrategicTaskComment[]
+  strategicChecklists    StrategicTaskChecklist[] @relation("ChecklistUser")
+
+  notifications        Notification[]
+  auditLogs            AuditLog[]
+
+  exceptionRequestsCreated ExceptionRequest[] @relation("ExceptionCreator")
+  exceptionRequestsDecided ExceptionRequest[] @relation("ExceptionDecider")
+
+  postponementRequests EvaluationPostponementRequest[] @relation("PostponementRequester")
+  postponementDecisions EvaluationPostponementRequest[] @relation("PostponementDecider")
+
+  stageChangeLogs StageChangeLog[]
+}
+
+model Ecosystem {
+  id        String   @id @default(cuid())
+  name      String
+  slug      String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  companies Company[]
+  memberships UserEcosystemMembership[]
+  usersSelected User[] @relation("UserSelectedEcosystem")
+  crmFunnels CrmFunnel[]
+  leads     Lead[]
+  slaConfigs SlaConfig[]
+  climateSurveys ClimateSurvey[]
+  strategicBoards StrategicBoard[]
+  tickets         Ticket[]
+  oneOnOnes       OneOnOne[]
+  evaluations     Evaluation[]
+}
+
+model Role {
+  id          String   @id @default(cuid())
+  name        RoleName @unique
+  label       String
+  permissions RolePermission[]
+  memberships UserEcosystemMembership[]
+}
+
+model Permission {
+  id    String @id @default(cuid())
+  key   String @unique
+  label String
+  roles RolePermission[]
+}
+
+model RolePermission {
+  roleId         String
+  permissionId   String
+  role           Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission     Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@id([roleId, permissionId])
+}
+
+model UserEcosystemMembership {
+  id           String   @id @default(cuid())
+  userId       String
+  ecosystemId  String
+  roleId       String
+  createdAt    DateTime @default(now())
+
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  ecosystem  Ecosystem @relation(fields: [ecosystemId], references: [id], onDelete: Cascade)
+  role       Role      @relation(fields: [roleId], references: [id], onDelete: Restrict)
+
+  @@unique([userId, ecosystemId])
+}
+
+model Company {
+  id               String           @id @default(cuid())
+  ecosystemId      String
+  razaoSocial      String
+  cnpj             String
+  regimeTributario RegimeTributario?
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+
+  ecosystem Ecosystem @relation(fields: [ecosystemId], references: [id], onDelete: Cascade)
+  leads     Lead[]
+  workspaces ClientWorkspace[]
+  strategicTasks StrategicTask[]
+
+  @@unique([ecosystemId, cnpj])
+}
+
+model CrmFunnel {
+  id          String   @id @default(cuid())
+  ecosystemId String
+  name        String
+  createdAt   DateTime @default(now())
+
+  ecosystem Ecosystem @relation(fields: [ecosystemId], references: [id], onDelete: Cascade)
+  stages    CrmStage[]
+  leads     Lead[]
+}
+
+model CrmStage {
+  id        String   @id @default(cuid())
+  funnelId  String
+  name      String
+  slug      String
+  order     Int
+  slaHours  Int?
+
+  funnel CrmFunnel @relation(fields: [funnelId], references: [id], onDelete: Cascade)
+  leads  Lead[]
+  stageChangeLogs StageChangeLog[]
+
+  @@unique([funnelId, slug])
+}
+
+model Lead {
+  id                 String      @id @default(cuid())
+  ecosystemId        String
+  funnelId           String
+  stageId            String
+  companyId          String?
+
+  contactName        String
+  phone              String
+  origin             String
+  segment            String
+  revenue            String?
+  interest           String?
+  status             LeadStatus
+  lastActivityAt     DateTime?
+  nextActionAt       DateTime?
+  meetingAt          DateTime?
+  lossReason         String?
+  qualificationScore Float?
+  meetingScore       Float?
+
+  assignedSdrId      String?
+  assignedCloserId   String?
+
+  slaDueAt           DateTime?
+  slaBreached        Boolean     @default(false)
+  slaBreachedAt      DateTime?
+
+  kanbanOrder        Int         @default(0)
+
+  createdAt          DateTime    @default(now())
+  updatedAt          DateTime    @updatedAt
+
+  ecosystem   Ecosystem @relation(fields: [ecosystemId], references: [id], onDelete: Cascade)
+  funnel      CrmFunnel @relation(fields: [funnelId], references: [id], onDelete: Cascade)
+  stage       CrmStage  @relation(fields: [stageId], references: [id], onDelete: Restrict)
+  company     Company?  @relation(fields: [companyId], references: [id], onDelete: SetNull)
+  assignedSdr    User? @relation("LeadSdr", fields: [assignedSdrId], references: [id], onDelete: SetNull)
+  assignedCloser User? @relation("LeadCloser", fields: [assignedCloserId], references: [id], onDelete: SetNull)
+
+  activities     LeadActivity[]
+  tasks          LeadTask[]
+  meetings       Meeting[]
+  proposals      Proposal[]
+  contracts      Contract[]
+  stageChangeLogs StageChangeLog[]
+  exceptionRequests ExceptionRequest[]
+  strategicTasks StrategicTask[]
+}
+
+model LeadActivity {
+  id          String       @id @default(cuid())
+  leadId      String
+  userId      String
+  type        ActivityType
+  notes       String?
+  occurredAt  DateTime     @default(now())
+
+  lead Lead @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model LeadTask {
+  id          String   @id @default(cuid())
+  leadId      String
+  title       String
+  done        Boolean  @default(false)
+  dueAt       DateTime?
+  assigneeId  String?
+  createdById String
+  createdAt   DateTime @default(now())
+
+  lead      Lead @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  assignee  User? @relation("LeadTaskAssignee", fields: [assigneeId], references: [id], onDelete: SetNull)
+  createdBy User @relation("LeadTaskCreator", fields: [createdById], references: [id], onDelete: Cascade)
+}
+
+model StageChangeLog {
+  id          String   @id @default(cuid())
+  leadId      String
+  fromStageId String?
+  toStageId   String
+  userId      String
+  reason      String?
+  metadata    Json?
+  createdAt   DateTime @default(now())
+
+  lead    Lead     @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  toStage CrmStage @relation(fields: [toStageId], references: [id], onDelete: Restrict)
+  user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model ExceptionRequest {
+  id          String   @id @default(cuid())
+  leadId      String
+  requestedById String
+  justification String
+  status      String   @default("PENDENTE") // PENDENTE, APROVADO, REPROVADO
+  decidedById String?
+  decidedAt   DateTime?
+  createdAt   DateTime @default(now())
+
+  lead         Lead @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  requestedBy  User @relation("ExceptionCreator", fields: [requestedById], references: [id], onDelete: Cascade)
+  decidedBy    User? @relation("ExceptionDecider", fields: [decidedById], references: [id], onDelete: SetNull)
+}
+
+model Meeting {
+  id        String   @id @default(cuid())
+  leadId    String
+  userId    String
+  title     String
+  notes     String?
+  scheduledAt DateTime?
+  createdAt DateTime @default(now())
+
+  lead Lead @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Proposal {
+  id        String   @id @default(cuid())
+  leadId    String
+  userId    String
+  value     Float?
+  sentAt    DateTime?
+  notes     String?
+  createdAt DateTime @default(now())
+
+  lead Lead @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Contract {
+  id        String   @id @default(cuid())
+  leadId    String
+  userId    String
+  value     Float?
+  signedAt  DateTime?
+  createdAt DateTime @default(now())
+
+  lead Lead @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model OneOnOne {
+  id          String   @id @default(cuid())
+  ecosystemId String
+  sellerId    String
+  leaderId    String
+  scheduledAt DateTime
+  notes       String?
+  actionItems String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  ecosystem Ecosystem @relation(fields: [ecosystemId], references: [id], onDelete: Cascade)
+  seller User @relation("OneOnOneSeller", fields: [sellerId], references: [id], onDelete: Cascade)
+  leader User @relation("OneOnOneLeader", fields: [leaderId], references: [id], onDelete: Cascade)
+}
+
+model Evaluation {
+  id              String   @id @default(cuid())
+  ecosystemId     String
+  subjectId       String
+  leaderId        String
+  companyScore    Float?
+  periodYear      Int
+  periodMonth     Int
+  status          String   @default("RASCUNHO") // RASCUNHO, AUTO, LIDER, FINALIZADA
+
+  comprometimento           Int?
+  organizacaoCrm            Int?
+  volumeAtividades          Int?
+  qualidadeAbordagem        Int?
+  qualidadeQualificacao     Int?
+  gestaoObjecoes            Int?
+  qualidadeFollowups        Int?
+  aderenciaProcesso         Int?
+  conversaoReuniao          Int?
+  evolucaoPeriodo           Int?
+
+  pontoForte            String?
+  pontoMelhoria         String?
+  gargaloAtual          String?
+  focoProximaSemana     String?
+  acaoCombinada         String?
+  treinamentoRecomendado String?
+
+  scoreFinal            Float?
+  autoCompletedAt       DateTime?
+  leaderCompletedAt     DateTime?
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  ecosystem Ecosystem @relation(fields: [ecosystemId], references: [id], onDelete: Cascade)
+  subject User @relation("EvaluationSubject", fields: [subjectId], references: [id], onDelete: Cascade)
+  leader  User @relation("EvaluationLeader", fields: [leaderId], references: [id], onDelete: Cascade)
+
+  postponements EvaluationPostponementRequest[]
+}
+
+model EvaluationPostponementRequest {
+  id            String                        @id @default(cuid())
+  evaluationId  String
+  requestedById String
+  justification String
+  status        EvaluationPostponementStatus  @default(PENDENTE)
+  decidedById   String?
+  decidedAt     DateTime?
+  createdAt     DateTime @default(now())
+
+  evaluation  Evaluation @relation(fields: [evaluationId], references: [id], onDelete: Cascade)
+  requestedBy User       @relation("PostponementRequester", fields: [requestedById], references: [id], onDelete: Cascade)
+  decidedBy   User?      @relation("PostponementDecider", fields: [decidedById], references: [id], onDelete: SetNull)
+}
+
+model ClimateSurvey {
+  id          String   @id @default(cuid())
+  ecosystemId String
+  title       String
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+
+  ecosystem Ecosystem @relation(fields: [ecosystemId], references: [id], onDelete: Cascade)
+  responses ClimateSurveyResponse[]
+}
+
+model ClimateSurveyResponse {
+  id         String   @id @default(cuid())
+  surveyId   String
+  userId     String?
+  anonymous  Boolean  @default(false)
+  q1         Int
+  q2         Int
+  q3         Int
+  q4         Int
+  q5         Int
+  comment    String?
+  createdAt  DateTime @default(now())
+
+  survey ClimateSurvey @relation(fields: [surveyId], references: [id], onDelete: Cascade)
+  user   User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+}
+
+model Ticket {
+  id                String            @id @default(cuid())
+  ecosystemId       String
+  number            Int
+  requesterId       String
+  area              TicketArea
+  category          TicketCategory
+  subcategory       TicketSubcategory
+  description       String
+  status            TicketStatus      @default(ABERTO)
+  expectedAt        DateTime?
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+  closedAt          DateTime?
+
+  ecosystem  Ecosystem @relation(fields: [ecosystemId], references: [id], onDelete: Cascade)
+  requester  User      @relation("TicketRequester", fields: [requesterId], references: [id], onDelete: Cascade)
+  messages   TicketMessage[]
+
+  @@unique([ecosystemId, number])
+}
+
+model TicketMessage {
+  id        String   @id @default(cuid())
+  ticketId  String
+  userId    String
+  body      String
+  createdAt DateTime @default(now())
+
+  ticket Ticket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model ClientWorkspace {
+  id          String   @id @default(cuid())
+  companyId   String
+  name        String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  folders WorkspaceFolder[]
+}
+
+model WorkspaceFolder {
+  id          String   @id @default(cuid())
+  workspaceId String
+  key         String
+  name        String
+  createdAt   DateTime @default(now())
+
+  workspace ClientWorkspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  files     WorkspaceFile[]
+
+  @@unique([workspaceId, key])
+}
+
+model WorkspaceFile {
+  id          String   @id @default(cuid())
+  folderId    String
+  name        String
+  mimeType    String
+  size        Int
+  blob        Bytes
+  uploadedById String
+  createdAt   DateTime @default(now())
+
+  folder     WorkspaceFolder @relation(fields: [folderId], references: [id], onDelete: Cascade)
+  uploadedBy User            @relation("WorkspaceFileUploader", fields: [uploadedById], references: [id], onDelete: Cascade)
+  comments   WorkspaceComment[]
+}
+
+model WorkspaceComment {
+  id        String   @id @default(cuid())
+  fileId    String
+  userId    String
+  body      String
+  createdAt DateTime @default(now())
+
+  file WorkspaceFile @relation(fields: [fileId], references: [id], onDelete: Cascade)
+  user User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model StrategicBoard {
+  id          String   @id @default(cuid())
+  ecosystemId String
+  name        String   @default("Planejamento Estratégico")
+  createdAt   DateTime @default(now())
+
+  ecosystem Ecosystem @relation(fields: [ecosystemId], references: [id], onDelete: Cascade)
+  tasks     StrategicTask[]
+}
+
+model StrategicTask {
+  id          String            @id @default(cuid())
+  boardId     String
+  column      StrategicColumn
+  order       Int               @default(0)
+  title       String
+  description String?
+  assigneeId  String?
+  priority    StrategicPriority
+  dueAt       DateTime?
+  statusLabel String?
+  companyId   String?
+  leadId      String?
+  slaDueAt    DateTime?
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+
+  board    StrategicBoard @relation(fields: [boardId], references: [id], onDelete: Cascade)
+  assignee User? @relation("StrategicAssignee", fields: [assigneeId], references: [id], onDelete: SetNull)
+  company  Company? @relation(fields: [companyId], references: [id], onDelete: SetNull)
+  lead     Lead?    @relation(fields: [leadId], references: [id], onDelete: SetNull)
+
+  comments   StrategicTaskComment[]
+  checklists StrategicTaskChecklist[]
+  attachments StrategicTaskAttachment[]
+}
+
+model StrategicTaskComment {
+  id        String   @id @default(cuid())
+  taskId    String
+  userId    String
+  body      String
+  createdAt DateTime @default(now())
+
+  task StrategicTask @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  user User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model StrategicTaskChecklist {
+  id        String   @id @default(cuid())
+  taskId    String
+  title     String
+  done      Boolean  @default(false)
+  userId    String?
+  createdAt DateTime @default(now())
+
+  task StrategicTask @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  user User? @relation("ChecklistUser", fields: [userId], references: [id], onDelete: SetNull)
+}
+
+model StrategicTaskAttachment {
+  id        String   @id @default(cuid())
+  taskId    String
+  name      String
+  mimeType  String
+  size      Int
+  blob      Bytes
+  createdAt DateTime @default(now())
+
+  task StrategicTask @relation(fields: [taskId], references: [id], onDelete: Cascade)
+}
+
+model Notification {
+  id        String           @id @default(cuid())
+  userId    String
+  type      NotificationType
+  title     String
+  body      String?
+  read      Boolean          @default(false)
+  link      String?
+  createdAt DateTime         @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  userId     String?
+  ecosystemId String?
+  entity     String
+  entityId   String?
+  action     String
+  diff       Json?
+  ip         String?
+  createdAt  DateTime @default(now())
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+}
+
+model SlaConfig {
+  id          String   @id @default(cuid())
+  ecosystemId String
+  key         String
+  hours       Int
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  ecosystem Ecosystem @relation(fields: [ecosystemId], references: [id], onDelete: Cascade)
+
+  @@unique([ecosystemId, key])
+}
