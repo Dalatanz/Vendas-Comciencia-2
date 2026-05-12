@@ -23,6 +23,33 @@ Sistema web completo para inteligência comercial: CRM com funil **cold call**, 
 npm install
 ```
 
+### Primeira vez com base de dados (obrigatório para login real)
+
+Precisa de **PostgreSQL com o schema aplicado**. Escolha **uma** opção:
+
+**A) Docker (PC)** — instale [Docker Desktop](https://www.docker.com/products/docker-desktop/), abra-o e na pasta do projeto:
+
+```bash
+docker compose up -d
+npm run db:setup
+```
+
+(`db:setup` = `prisma migrate deploy` + seed.)
+
+**B) Supabase** — no dashboard: **Project Settings → Database → Connection string** (modo **URI**, host `db…`, porta **5432**). Cole no `.env` como `DATABASE_URL=...` e no terminal:
+
+```bash
+npm run db:setup
+```
+
+Depois:
+
+```bash
+npm run dev
+```
+
+Login: `master@vendacomciencia.com` / `maisvendas!@2026` (após o seed).
+
 ## Variáveis de ambiente
 
 Copie `.env.example` para `.env` e ajuste:
