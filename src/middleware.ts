@@ -18,13 +18,19 @@ export async function middleware(req: NextRequest) {
     return NextResponse.next();
   }
 
-  const secret = process.env.AUTH_SECRET;
+  const secret = process.env.AUTH_SECRET ?? process.env.NEXTAUTH_SECRET;
   if (!secret) {
     console.error("[middleware] AUTH_SECRET não definido.");
     return NextResponse.next();
   }
 
-  const token = await getToken({ req, secret });
+  // Em HTTPS (ex.: Vercel), o cookie de sessão é `__Secure-authjs.session-token`.
+  // `getToken` sem `secureCookie: true` só lê `authjs.session-token` → sempre sem sessão → loop no /login.
+  const forwardedProto = req.headers.get("x-forwarded-proto")?.split(",")[0]?.trim();
+  const secureCookie =
+    req.nextUrl.protocol === "https:" || forwardedProto === "https";
+
+  const token = await getToken({ req, secret, secureCookie });
 
   if (!token?.sub) {
     if (path === "/login") return NextResponse.next();
