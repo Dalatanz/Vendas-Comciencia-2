@@ -87,16 +87,33 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       if (trigger === "update" && session && typeof session === "object") {
         const s = session as { ecosystemId?: string };
         if (s.ecosystemId && token.sub) {
-          if (!(isDemoMode() && token.sub === DEMO_USER_ID)) {
-            await prisma.user.update({
-              where: { id: token.sub },
-              data: { selectedEcosystemId: s.ecosystemId },
-            });
+          try {
+            if (!(isDemoMode() && token.sub === DEMO_USER_ID)) {
+              await prisma.user.update({
+                where: { id: token.sub },
+                data: { selectedEcosystemId: s.ecosystemId },
+              });
+            }
+            token.ecosystemId = s.ecosystemId;
+          } catch (e) {
+            console.error("[auth] jwt update selectedEcosystemId", e);
           }
-          token.ecosystemId = s.ecosystemId;
         }
       }
-      await hydrateToken(token as { sub?: string; ecosystemId?: string | null; role?: RoleName | null; permissions?: string[] });
+      try {
+        await hydrateToken(
+          token as {
+            sub?: string;
+            ecosystemId?: string | null;
+            role?: RoleName | null;
+            permissions?: string[];
+          }
+        );
+      } catch (e) {
+        // Sem isto: Prisma falha (ex. pool esgotado) → JWTSessionError → /login;
+        // o middleware ainda vê o cookie JWT → /dashboard → loop infinito.
+        console.error("[auth] hydrateToken (mantém claims já no token)", e);
+      }
       return token;
     },
     async session({ session, token }) {
