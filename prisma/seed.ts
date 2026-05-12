@@ -10,7 +10,7 @@ import {
   StrategicColumn,
   StrategicPriority,
 } from "@prisma/client";
-import bcrypt from "bcrypt";
+import { hash as bcryptHash } from "bcryptjs";
 
 const prisma = new PrismaClient();
 
@@ -166,7 +166,7 @@ const WORKSPACE_FOLDER_KEYS = [
 ];
 
 async function main() {
-  const hash = await bcrypt.hash(PASSWORD, 10);
+  const passwordHash = await bcryptHash(PASSWORD, 10);
 
   for (const p of PERMISSIONS) {
     await prisma.permission.upsert({
@@ -311,10 +311,10 @@ async function main() {
       create: {
         email: u.email,
         name: u.name,
-        passwordHash: hash,
+        passwordHash: passwordHash,
         selectedEcosystemId: scale.id,
       },
-      update: { name: u.name, passwordHash: hash, selectedEcosystemId: scale.id },
+      update: { name: u.name, passwordHash: passwordHash, selectedEcosystemId: scale.id },
     });
 
     for (const eco of [scale, simplifica]) {

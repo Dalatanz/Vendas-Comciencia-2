@@ -70,7 +70,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             name: "Master (demonstração)",
           };
         }
-        const { compare } = await import("bcrypt");
+        const { compare } = await import("bcryptjs");
         const user = await prisma.user.findUnique({ where: { email: em } });
         if (!user) return null;
         const ok = await compare(password, user.passwordHash);

@@ -6,7 +6,7 @@ import { prisma } from "@/lib/prisma";
 import { requireAuth } from "./auth-context";
 import { can } from "@/lib/rbac";
 import { writeAudit } from "./audit-notify";
-import bcrypt from "bcrypt";
+import { hash } from "bcryptjs";
 
 export async function listUsers() {
   const ctx = await requireAuth();
@@ -33,12 +33,12 @@ export async function createUser(data: {
   if (!can(ctx, "admin.users")) return { error: "Sem permissão." };
   const role = await prisma.role.findUnique({ where: { name: data.roleName } });
   if (!role) return { error: "Perfil inválido." };
-  const hash = await bcrypt.hash(data.password, 10);
+  const passwordHash = await hash(data.password, 10);
   const user = await prisma.user.create({
     data: {
       email: data.email.toLowerCase().trim(),
       name: data.name.trim(),
-      passwordHash: hash,
+      passwordHash,
       selectedEcosystemId: data.ecosystemId,
       memberships: {
         create: { ecosystemId: data.ecosystemId, roleId: role.id },
