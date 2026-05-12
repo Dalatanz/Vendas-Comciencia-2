@@ -10,7 +10,7 @@ import {
   StrategicColumn,
   StrategicPriority,
 } from "@prisma/client";
-import { hash as bcryptHash } from "bcryptjs";
+import bcrypt from "bcryptjs";
 
 const prisma = new PrismaClient();
 
@@ -166,7 +166,7 @@ const WORKSPACE_FOLDER_KEYS = [
 ];
 
 async function main() {
-  const passwordHash = await bcryptHash(PASSWORD, 10);
+  const passwordHash = await bcrypt.hash(PASSWORD, 10);
 
   for (const p of PERMISSIONS) {
     await prisma.permission.upsert({

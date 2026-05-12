@@ -96,12 +96,16 @@ enum EvaluationPostponementStatus {
   REPROVADO
 }
 
+/// Alinhado a NextAuth + Credentials: `passwordHash` guarda o hash bcrypt (equivalente ao `password` dos exemplos Auth.js).
+/// `role` opcional só para compatibilidade com bases legadas; o perfil real da app vem de `UserEcosystemMembership` + `Role`.
 model User {
   id                   String    @id @default(cuid())
   email                String    @unique
+  emailVerified        DateTime?
   passwordHash         String
   name                 String
   image                String?
+  role                 String?
   selectedEcosystemId  String?
   createdAt            DateTime  @default(now())
   updatedAt            DateTime  @updatedAt

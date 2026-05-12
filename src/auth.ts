@@ -1,5 +1,6 @@
 import NextAuth from "next-auth";
 import Credentials from "next-auth/providers/credentials";
+import bcrypt from "bcryptjs";
 import type { RoleName } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { isDemoMode } from "@/lib/demo-mode";
@@ -70,10 +71,9 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             name: "Master (demonstração)",
           };
         }
-        const { compare } = await import("bcryptjs");
         const user = await prisma.user.findUnique({ where: { email: em } });
         if (!user) return null;
-        const ok = await compare(password, user.passwordHash);
+        const ok = await bcrypt.compare(password, user.passwordHash);
         if (!ok) return null;
         return { id: user.id, email: user.email, name: user.name };
       },

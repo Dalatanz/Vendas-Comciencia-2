@@ -58,6 +58,12 @@ Em desenvolvimento, alternativa rápida sem histórico de migration:
 npm run db:push
 ```
 
+### Supabase / Postgres já existente (sem recriar o schema)
+
+- Rode **`npx prisma migrate deploy`** no projeto (com `DATABASE_URL` apontando para o banco). A migration `20260513120000_user_nextauth_supabase_compat` adiciona em **`"User"`** as colunas em falta de forma idempotente: `emailVerified`, `image`, `role` (todas opcionais exceto as que já existirem).
+- O hash de senha continua no campo **`passwordHash`**. Se a sua tabela tiver a coluna **`password`** (template NextAuth antigo), renomeie no SQL (`ALTER TABLE "User" RENAME COLUMN "password" TO "passwordHash";`) **ou** no `schema.prisma` use `passwordHash String @map("password")` e regere o client — não faça os dois.
+- Depois do deploy das migrations: **`npm run db:seed`** (usa `upsert` por e-mail; não duplica utilizadores já existentes com o mesmo e-mail).
+
 ### Seeds (dados iniciais + usuários de teste)
 
 ```bash
