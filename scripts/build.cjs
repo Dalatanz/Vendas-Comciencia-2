@@ -4,6 +4,12 @@
  */
 const { spawnSync } = require("child_process");
 
+// O schema Prisma exige DIRECT_URL; na Vercel às vezes só existe DATABASE_URL.
+// Sem isto o `migrate deploy` falha com P1012 antes do next build.
+if (!String(process.env.DIRECT_URL || "").trim() && process.env.DATABASE_URL) {
+  process.env.DIRECT_URL = process.env.DATABASE_URL;
+}
+
 function run(cmd, args) {
   const r = spawnSync(cmd, args, { stdio: "inherit", shell: true, env: process.env });
   if (r.status !== 0) process.exit(r.status ?? 1);
