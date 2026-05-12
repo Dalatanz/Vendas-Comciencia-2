@@ -1,13 +1,11 @@
 "use client";
 
 import { useSession } from "next-auth/react";
-import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { listMyEcosystems, setSelectedEcosystem } from "@/actions/ecosystem";
 
 export default function SelectEcosystemPage() {
   const { data: session, update } = useSession();
-  const router = useRouter();
   const [items, setItems] = useState<{ id: string; name: string; slug: string }[]>([]);
   const [err, setErr] = useState<string | null>(null);
 
@@ -26,8 +24,7 @@ export default function SelectEcosystemPage() {
       return;
     }
     await update({ ecosystemId: id });
-    router.push("/dashboard");
-    router.refresh();
+    window.location.assign("/dashboard");
   }
 
   return (

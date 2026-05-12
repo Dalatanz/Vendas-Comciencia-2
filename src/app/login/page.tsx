@@ -1,11 +1,9 @@
 "use client";
 
 import { signIn } from "next-auth/react";
-import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 export default function LoginPage() {
-  const router = useRouter();
   const [email, setEmail] = useState("master@vendacomciencia.com");
   const [password, setPassword] = useState("maisvendas!@2026");
   const [error, setError] = useState<string | null>(null);
@@ -25,8 +23,9 @@ export default function LoginPage() {
       setError("E-mail ou senha incorretos.");
       return;
     }
-    router.push("/dashboard");
-    router.refresh();
+    // Navegação completa: garante que o cookie da sessão (Set-Cookie no POST credentials)
+    // seja enviado no próximo pedido. router.push sozinho costuma falhar com NextAuth + App Router.
+    window.location.assign("/dashboard");
   }
 
   return (
