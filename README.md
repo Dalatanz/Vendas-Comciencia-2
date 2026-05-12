@@ -193,13 +193,15 @@ Quando for usar dados reais, desative `DEMO_MODE`, aponte `DATABASE_URL` para um
 
    | Variável | Valor |
    |----------|--------|
-   | `DATABASE_URL` | URI do Supabase (**pooler** 6543 + `pgbouncer=true` para produção) |
+   | `DATABASE_URL` | URI do Supabase (**pooler** 6543 + `pgbouncer=true` para produção) **ou**, se o build falhar nas migrations, use temporariamente a URI **direta** (porta **5432**) até o primeiro deploy concluir |
    | `AUTH_SECRET` | Mesmo tipo de segredo longo do `.env` local (pode ser outro valor, só precisa ser estável) |
    | `NEXTAUTH_URL` | URL pública do site, ex.: `https://seu-app.vercel.app` (sem `/` no final) |
 
-3. **Build**: a Vercel roda `npm run build` (o `postinstall` já roda `prisma generate`).  
-4. **Migrations**: não dependa só do build para criar tabelas — rode `npx prisma migrate deploy` (ou `db push`) **contra o Supabase** a partir da sua máquina ou de um job de CI **antes** ou logo após o primeiro deploy, com `DATABASE_URL` apontando para o mesmo banco.  
-5. **Seed em produção**: rode `npm run db:seed` **uma vez** contra o banco de produção se quiser os usuários de demo (em produção real, prefira criar só um admin e remover o seed depois).
+3. **Build:** o script `npm run build` corre **`prisma migrate deploy`** antes do `next build`, para criar tabelas (`User`, etc.) no Supabase ligado ao `DATABASE_URL`. Não precisa de Postgres na máquina para o deploy.  
+4. **Seed (uma vez):** as migrations não criam utilizadores de teste. Depois do primeiro deploy OK, no seu PC com `DATABASE_URL` **direto** ao Supabase: `npm run db:seed`. A partir daí o login na Vercel funciona.  
+5. **Build local sem base:** `set SKIP_PRISMA_MIGRATE=1` (Windows) ou `SKIP_PRISMA_MIGRATE=1 npm run build` (Unix) para só correr o Next.js.  
+6. **Migrations**: não dependa só do build se preferir control manual — pode continuar a correr `npx prisma migrate deploy` no PC.  
+7. **Seed em produção**: não rode o seed em todo deploy (não está no build); só quando precisar de dados iniciais.
 
 O projeto já usa `trustHost: true` no NextAuth, adequado ao domínio da Vercel.
 
