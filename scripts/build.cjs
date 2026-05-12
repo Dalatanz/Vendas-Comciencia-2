@@ -10,6 +10,13 @@ function run(cmd, args) {
 }
 
 if (process.env.SKIP_PRISMA_MIGRATE !== "1") {
+  // P3009: deploy anterior pode ter deixado `20260512190000_init` em estado "failed" (ex.: BOM no SQL).
+  // Marcar como rolled back permite `migrate deploy` voltar a aplicar. Ignora erro se não houver falha pendente.
+  spawnSync("npx", ["prisma", "migrate", "resolve", "--rolled-back", "20260512190000_init"], {
+    stdio: "inherit",
+    shell: true,
+    env: process.env,
+  });
   run("npx", ["prisma", "migrate", "deploy"]);
 }
 

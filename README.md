@@ -213,15 +213,18 @@ O projeto já usa `trustHost: true` no NextAuth, adequado ao domínio da Vercel.
 - `npm run build` + deploy na plataforma escolhida.  
 - Banco: migrations aplicadas no Postgres (Supabase ou outro).
 
-### Migração falhou no deploy (ex.: P3018 / syntax error near `﻿`)
+### Migração falhou no deploy (ex.: P3018 / P3009 / syntax error near `﻿`)
 
-Os ficheiros em `prisma/migrations/**/migration.sql` devem estar em **UTF-8 sem BOM**. Se uma migration falhou a meio no Supabase, no PC com `DATABASE_URL` direto:
+Os ficheiros em `prisma/migrations/**/migration.sql` devem estar em **UTF-8 sem BOM**. O build na Vercel tenta **`migrate resolve --rolled-back`** na migration inicial antes de `migrate deploy`, para limpar estado **failed** (P3009) deixado por um deploy anterior.
+
+Se ainda precisar de corrigir à mão, no PC com `DATABASE_URL` direto:
 
 ```bash
 npx prisma migrate resolve --rolled-back 20260512190000_init
+npx prisma migrate deploy
 ```
 
-Depois rode de novo `npx prisma migrate deploy` (ou faça um novo deploy na Vercel).
+Depois faça um novo deploy na Vercel (ou rode `npm run db:seed` se faltarem utilizadores).
 
 ---
 
